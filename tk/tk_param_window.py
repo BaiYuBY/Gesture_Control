@@ -1,6 +1,7 @@
 from threading import Thread
 from tk.tk_param import *
 import time
+from typing import Callable
 
 
 class TKParamWindow:
@@ -35,12 +36,22 @@ class TKParamWindow:
         self._mainloop_thread.join()
         self._is_running = False
 
-    def get_scalar(self, param_type: TKDataType,
+    def get_scalar(self,
+                   data_type: TKDataType,
                    param_name: str,
                    default_value: float = None,
                    range_min: float = None,
-                   range_max: float = None):
-        param = TK_PARAM_SCALAR_MAP[param_type](self.root, param_name, param_type, default_value, range_min, range_max)
+                   range_max: float = None)\
+            -> TkScalar:
+        param = TK_PARAM_SCALAR_MAP[data_type](self.root, param_name, data_type, default_value, range_min, range_max)
+        return param
+
+    def get_bool_btn(self,
+                     param_name: str,
+                     default_value: bool = True,
+                     on_change: Callable[[bool], None] = None) -> TkBoolBtn:
+        data_type = TKDataType.BOOL
+        param = TK_PARAM_SCALAR_MAP[data_type](self.root, param_name, default_value, on_change)
         return param
 
 

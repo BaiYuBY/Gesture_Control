@@ -16,16 +16,10 @@ pose = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 cap = cv2.VideoCapture(0)
 
 # 全局变量
-is_active = False  # 标志是否正在录制
+is_active = True  # 标志是否正在录制
 output_dir = None  # 当前输出文件夹
 video_writer = None  # 视频写入对象
 frame_index = 0  # 帧计数
-
-# 姿态检测参数
-left_right_threshold = 0.11
-head_body_threshold = 0.08
-move_threshold = 0.55
-pack_threshold = 0.15
 
 # 肢体对应的landmark索引
 head_indices = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -41,9 +35,14 @@ body_indices = [11, 12, 23, 24]
 timers = TimerManager()
 tk_window = TKParamWindow()
 
-# 调参面板参数
+# 调参面板注册姿态检测参数
+mp_detect_player2 = tk_window.get_bool_btn("启用玩家2姿态检测", default_value=True)
+cam_cap_resize = tk_window.get_scalar(TKDataType.FLOAT, "识别图像缩放倍数", default_value=0.8, range_min=0.3, range_max=1.0)
+# left_right_threshold = tk_window.get_scalar(TKDataType.FLOAT, "左右手阈值", default_value=0.11, range_min=0.001, range_max=0.3)
+# head_body_threshold = tk_window.get_scalar(TKDataType.FLOAT, "头身阈值", default_value=0.08, range_min=0.001, range_max=0.12)
+cut_move_threshold = tk_window.get_scalar(TKDataType.FLOAT, "”切“动作相邻帧最小移动距离", default_value=0.55, range_min=0.001, range_max=1.0)
+pack_threshold = tk_window.get_scalar(TKDataType.FLOAT, "”丢”动作左右手最大距离", default_value=0.15, range_min=0.001, range_max=0.3)
 auto_press_duration = tk_window.get_scalar(TKDataType.FLOAT, "自动按键时间", default_value=0.1, range_min=0.001, range_max=1.0)
-cam_cap_resize = tk_window.get_scalar(TKDataType.FLOAT, "识别图像缩放倍数", default_value=0.6, range_min=0.1, range_max=1.0)
 
 # 创建玩家对象
 p1 = Player("Player1")
@@ -63,19 +62,17 @@ keyboard_mapping = {
 }
 
 
-def auto_press_button(button: str, player, duration):
+def auto_press_button(button: str, player: Player, duration: [int|float]):
     """自动模拟按下-等待-抬起的过程。玩家按下按钮，一段时间后释放按钮，如还没释放就不能再按"""
 
     def release_button():
         """释放按钮"""
         player.gamepad.release_button(button=button_mapping[button])  # 释放按键
         player.gamepad.update()  # 更新手柄状态
-        print(f'player{player.id} release {button}')
 
     # 模拟按下按钮
     player.gamepad.press_button(button=button_mapping[button])
     player.gamepad.update()  # 更新手柄状态
-    print(f'player{player.id} press {button}')
 
     # 找到player对应按键绑定的timer，设为duration的时间；如果没有timer就创建个新的
     timer = player.button_timers.get(button)
@@ -216,7 +213,7 @@ def simple_logic(landmarks, player: Player):
     left_hand_position = (left_hand_avg['x'], left_hand_avg['y'])
 
     if (sum(abs(a - b) for a, b in zip(player.last_right_hand_position, right_hand_position)) +
-        sum(abs(a - b) for a, b in zip(player.last_left_hand_position, left_hand_position))) > move_threshold:
+        sum(abs(a - b) for a, b in zip(player.last_left_hand_position, left_hand_position))) > cut_move_threshold:
         auto_press_button('cut', player, auto_press_duration)
         print(f'player{player.id} cut')
     elif sum(abs(a - b) for a, b in zip(right_hand_position, left_hand_position)) < pack_threshold:
@@ -226,6 +223,7 @@ def simple_logic(landmarks, player: Player):
     player1_last_left_hand_position = left_hand_position
 
 is_running_demo = True  # 标记是否正在运行Demo
+
 while is_running_demo:
     ret, ori_frame = cap.read()
     if not ret:
@@ -233,7 +231,7 @@ while is_running_demo:
 
     # 缩放图像，提高识别速度
     height, width, _ = ori_frame.shape
-    rescale = eval(cam_cap_resize.get())
+    rescale = cam_cap_resize.get()
     frame = cv2.resize(ori_frame, dsize=(int(width * rescale), int(height * rescale)), interpolation=cv2.INTER_NEAREST)
 
     # 获取帧的宽度和高度
@@ -252,20 +250,24 @@ while is_running_demo:
 
     # 进行姿势估计
     left_result = pose.process(left_rgb_frame)
-    right_result = pose.process(right_rgb_frame)
-
-    if right_result.pose_landmarks:
-        mp.solutions.drawing_utils.draw_landmarks(
-            right_frame, right_result.pose_landmarks, mp_pose.POSE_CONNECTIONS)
-        cv2.putText(right_frame, "Player 2", (5, 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        simple_logic(right_result.pose_landmarks.landmark, 2)  # 处理右手
-
     if left_result.pose_landmarks:
         # 在副本上绘制关键点
         mp.solutions.drawing_utils.draw_landmarks(
             left_frame, left_result.pose_landmarks, mp_pose.POSE_CONNECTIONS)
         cv2.putText(left_frame, "Player 1", (5, 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        simple_logic(left_result.pose_landmarks.landmark, 1)  # 处理左手
+        simple_logic(left_result.pose_landmarks.landmark, p1)  # 处理左图
+
+    if mp_detect_player2.get():
+        right_result = pose.process(right_rgb_frame)
+        if right_result.pose_landmarks:
+            mp.solutions.drawing_utils.draw_landmarks(
+                right_frame, right_result.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+            cv2.putText(right_frame, "Player 2", (5, 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            simple_logic(right_result.pose_landmarks.landmark, p2)  # 处理右图
+    else:
+        right_frame *= 0  # 画面变暗
+        cv2.putText(right_frame, "Player 2 Disabled", (5, 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
 
     processed_frame = cv2.hconcat([left_frame, right_frame])  # 左右两边画面拼接
     cv2.line(processed_frame, (mid_x, 0), (mid_x, height), (255, 0, 0), 2)  # 绿色分割线，线宽为2

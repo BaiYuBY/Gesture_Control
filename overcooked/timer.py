@@ -16,7 +16,7 @@ class TimerManager:
             self.callback = callback
 
         def start(self):
-            self.timeout_time = time.time() + self.duration  # 计算结束时间
+            self.timeout_time = self.duration + time.time()  # 计算结束时间
             self.is_timing = True
 
         def update(self):
