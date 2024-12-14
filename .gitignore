@@ -4,3 +4,5 @@
 /GNN_model
 /CNN_model
 *.pth
+.idea
+__pycache__
