@@ -39,6 +39,7 @@ class TkScalar(TkParamBase):
         resolution = 1 if data_type is TKDataType.INT else 0.0001
         self.scalar = tk.Scale(self.frame, variable=self.value, from_=self.range_min, to=self.range_max,
                                command=self.on_change, orient=HORIZONTAL, resolution=resolution, showvalue=True)
+        self.scalar.set(self.value)
         self.scalar.pack(fill=X, expand=True)
 
     def __str__(self):
@@ -55,25 +56,56 @@ class TkScalar(TkParamBase):
         self._update_label_content()
 
     def __add__(self, other):
-        return self.value + other
+        other_value = other.value if isinstance(other, TkScalar) else other
+        return self.value + other_value
 
     def __sub__(self, other):
-        return self.value - other
+        other_value = other.value if isinstance(other, TkScalar) else other
+        return self.value - other_value
 
     def __mul__(self, other):
-        return self.value * other
+        other_value = other.value if isinstance(other, TkScalar) else other
+        return self.value * other_value
 
     def __truediv__(self, other):
-        return self.value / other
+        other_value = other.value if isinstance(other, TkScalar) else other
+        return self.value / other_value
 
     def __floordiv__(self, other):
-        return self.value // other
+        other_value = other.value if isinstance(other, TkScalar) else other
+        return self.value // other_value
 
     def __mod__(self, other):
-        return self.value % other
+        other_value = other.value if isinstance(other, TkScalar) else other
+        return self.value % other_value
 
     def __pow__(self, other):
-        return self.value ** other.value
+        other_value = other.value if isinstance(other, TkScalar) else other
+        return self.value ** other_value
+
+    def __eq__(self, other):
+        other_value = other.value if isinstance(other, TkScalar) else other
+        return self.value == other_value
+
+    def __ne__(self, other):
+        other_value = other.value if isinstance(other, TkScalar) else other
+        return self.value != other_value
+
+    def __lt__(self, other):
+        other_value = other.value if isinstance(other, TkScalar) else other
+        return self.value <other_value
+
+    def __le__(self, other):
+        other_value = other.value if isinstance(other, TkScalar) else other
+        return self.value <= other_value
+
+    def __gt__(self, other):
+        other_value = other.value if isinstance(other, TkScalar) else other
+        return self.value > other_value
+
+    def __ge__(self, other):
+        other_value = other.value if isinstance(other, TkScalar) else other
+        return self.value >= other_value
 
 
 TK_PARAM_SCALAR_MAP = {

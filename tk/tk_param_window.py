@@ -1,5 +1,5 @@
 from threading import Thread
-from tk_param import *
+from tk.tk_param import *
 import time
 
 
@@ -25,6 +25,9 @@ class TKParamWindow:
         self.root = ttk.Window()
         self.root.title(self.title)
         self.root.mainloop()
+
+    def quit(self):
+        self.root.quit()
 
     def join_loop_thread(self):
         if self._mainloop_thread:
