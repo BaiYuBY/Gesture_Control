@@ -1,0 +1,6 @@
+/json_output
+/pose_json_output
+/recordings
+/GNN_model
+/CNN_model
+*.pth
